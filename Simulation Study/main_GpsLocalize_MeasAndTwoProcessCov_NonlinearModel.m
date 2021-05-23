@@ -207,7 +207,6 @@ for j=1:n_MC
     end
     % cputime for state and covariance estimation
     cptime(j)=cputime-cptime0;
-    j
     % store estimates
     var_vect(:,j)=[sig_eHat;sig_p1Hat;sig_p2Hat];
     % index of too large values
