@@ -11,7 +11,7 @@ flag_unbiased=0;
 % flag=1 if trying to "scale" adjusted covariance to keep with order of magnitude change
 flag_scale_cov_change=1;
 % number of MC runs
-n_MC=1000;
+n_MC=100;
 % random number seed
 rng(2);
 % ==== end of user inputs

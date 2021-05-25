@@ -6,7 +6,7 @@
 close all;
 clear;
 % flag =1 for unbiased, 0 for biased variance estimators
-flag_unbiased=0;
+flag_unbiased=1;
 % flag =1 for robust (M), 0 for nonrobust state estimators (biased or unbiased variance estimators)
 flag_robust=0;
 % flag =1 for errors with outliers, 0 for no outliers
@@ -14,7 +14,7 @@ flag_outliers=0;
 % flag=1 if trying to "scale" adjusted covariance to keep with order of magnitude change
 flag_scale_cov_change=1;
 % number of MC runs
-n_MC=1000;
+n_MC=100;
 % number of times the robot will repeat the cycles
 n_rep_cycle=1;
 % random number seed
