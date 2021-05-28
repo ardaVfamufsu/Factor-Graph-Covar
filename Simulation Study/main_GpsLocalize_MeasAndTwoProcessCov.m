@@ -7,7 +7,7 @@ close all;
 clear;
 % flag =1 for unbiased, 0 for biased variance estimators
 flag_unbiased=1;
-flag_new=1;  %Should hopefull be correct this time...
+flag_new=1;  %Should hopefully be correct this time...
 % flag =1 for robust (M), 0 for nonrobust state estimators (biased or unbiased variance estimators)
 flag_robust=0;
 % flag =1 for errors with outliers, 0 for no outliers
@@ -171,8 +171,8 @@ for j=1:n_MC
         Az=A(mx+1:m,:); 
         if flag_unbiased
             if flag_new
-                idx{1}=idx_x1;
-                idx{2}=idx_x2;
+                idx{1}=ind_x1;
+                idx{2}=ind_x2;
                 idx{3}=mx+1:m;
                 cov_est = getUnbVarEstSLAM_new(unw_A,W,unw_R,idx);
                 sig_p1Hat_new = cov_est{1};

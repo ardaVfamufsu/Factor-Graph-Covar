@@ -21,14 +21,14 @@ function cov_est = getUnbVarEstSLAM_new(A,W,R,idx)
 %% Maybe I can test idx meets the conditions decribed above after all?
 for ii = 1:length(idx)-1
     for jj = ii+1:length(idx)
-        assert(isempty(intersection(idx{ii},idx{jj})))
+        assert(isempty(intersect(idx{ii},idx{jj})))
     end
 end
 
 m = size(A,1);
 full_idx = idx{1};
 for ii=2:length(idx)
-    full_idx=union(full_idx,idx{i});
+    full_idx=union(full_idx,idx{ii});
 end
 assert(isempty(setdiff(full_idx,1:m)))
 assert(isempty(setdiff(1:m,full_idx)))
@@ -44,11 +44,9 @@ Rsq = zeros(length(idx),1);
 for ii = 1:length(idx)
     for jj=1:length(idx)
         small_H = H(idx{ii},idx{jj});
-        T(ii,jj) = norm(small_H,'fro')^2;
+        T(ii,jj) = trace(small_H.' * small_H); %(small_H,'fro')^2;
     end
-    Rsq = norm(R(idx{ii}),2)^2;
+    Rsq(ii) = norm(R(idx{ii}),2)^2;
 end
 
 cov_est = T\Rsq;
-
-    

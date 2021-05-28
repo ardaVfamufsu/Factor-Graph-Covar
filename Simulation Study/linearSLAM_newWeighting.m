@@ -34,7 +34,7 @@ for i=1:n
         a_vec_i=x1(:,i)-G*x1(:,i-1)-u(:,i);
     end
     unw_rhs_x((i-1)*4+1:i*4) = a_vec_i;
-    rhs_x(i*4-3:i*4) = S_sqr*a_vec_i;
+    rhs_x(i*4-3:i*4) = Sp_sqr*a_vec_i;
 end
 
 % rhs vector for z
@@ -55,7 +55,7 @@ unw_R = [unw_rhs_x; unw_rhs_z];
 Ax_mid=[G -eye(4)];
 for i=1:n
     if i==1
-        Ax=[-Sp_sq*eye(4) repmat(zeros(4), 1,n-1)];
+        Ax=[eye(4) repmat(zeros(4), 1,n-1)];
     else
         Ax=[Ax; repmat(zeros(4), 1,i-2)  Ax_mid repmat(zeros(4), 1,n-i)];
     end    
@@ -93,7 +93,7 @@ end
 zmi = n*4; %Z's matrix index
 zai = n_Sp*n; %Z's array index
 for ii=1:n
-    [rows,cols] = create_ij(zmi+ ii*2-1:zmi+ ii*2, r_Se,c_Se);
+    [rows,cols] = create_ij(zmi+ ii*2-1, zmi+ ii*2-1, r_Se,c_Se);
     data_arr(zai + ii*n_Se-n_Se+1: zai+ii*n_Se) = Se_sqr(:);
     row_arr(zai + ii*n_Se-n_Se+1: zai+ii*n_Se) = rows(:);
     col_arr(zai + ii*n_Se-n_Se+1: zai+ii*n_Se) = cols(:);
@@ -102,8 +102,8 @@ W_sqr = sparse(row_arr,col_arr,data_arr);
 W = W_sqr.' * W_sqr;
    
 %% Solve for delta_x
-w_A = W_sqr*A;
-AtA = w_A.'*w_AA;
+w_A = W_sqr*unw_A;
+AtA = w_A.'*w_A;
 Aty = w_A.'*rhs;
 delta_x = AtA\Aty;
 
