@@ -44,7 +44,8 @@ for i=1:n
   v_states=x1(:,i);
   v_meas=Y(:,i);
   c_vec_i=v_meas-F*v_states;  
-  unw_rhs_z(i*2-1:i*2)=c_vec_i;  
+  unw_rhs_z(i*2-1:i*2)=c_vec_i;
+  rhs_z(i*2-1:i*2) = Se_sqr*c_vec_i;
 end
 % combine the rhs vectors
 rhs=[rhs_x; rhs_z];
@@ -55,7 +56,7 @@ unw_R = [unw_rhs_x; unw_rhs_z];
 Ax_mid=[G -eye(4)];
 for i=1:n
     if i==1
-        Ax=[eye(4) repmat(zeros(4), 1,n-1)];
+        Ax=[-eye(4) repmat(zeros(4), 1,n-1)];
     else
         Ax=[Ax; repmat(zeros(4), 1,i-2)  Ax_mid repmat(zeros(4), 1,n-i)];
     end    

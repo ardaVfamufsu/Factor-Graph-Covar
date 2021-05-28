@@ -15,9 +15,9 @@ flag_outliers=0;
 % flag=1 if trying to "scale" adjusted covariance to keep with order of magnitude change
 flag_scale_cov_change=1;
 % number of MC runs
-n_MC=100;
+n_MC=500;
 % number of times the robot will repeat the cycles
-n_rep_cycle=1;
+n_rep_cycle=4;
 % random number seed
 % rng(0);
 % ==== end of user inputs
@@ -89,7 +89,8 @@ W=[sig_p1 0 0 0; 0 sig_p1 0 0; 0 0 sig_p2 0; 0 0 0 sig_p2];
 sig_eHat0=1; sig_pHat0=1;
 %% state estimation, linearization approach - See Dellaert and Kaess  (2006)
 % number of linearizations
-m_iter=5;
+m_iter=2;  %This is a linear problem, so the first one actually takes the 
+            % step, the second one gets the right residuals
 % mahalanobis distance storage vector
 distMah_irls=zeros(n_MC,1); 
 distMah_irls2=zeros(n_MC,1); 
@@ -130,7 +131,8 @@ for j=1:n_MC
     x_sol_prev=x_vec0;
     x_sol=x_vec0;    
     % initialize process and measurement variances
-    sig_eHat=sig_eHat0; sig_p1Hat=sig_pHat0; sig_p2Hat=sig_pHat0;
+    %sig_eHat=sig_eHat0; sig_p1Hat=sig_pHat0; sig_p2Hat=sig_pHat0;
+    sig_eHat=sig_e; sig_p1Hat=sig_p1; sig_p2Hat=sig_p2;  %Initialize to the truth
     % initialize condition number
     cond_noA=1e-6;      
     % cputime start
@@ -151,7 +153,7 @@ for j=1:n_MC
                 rhs_z=rhs_w(mx+1:m);
             else
                 if flag_new
-                    [del_x_sol,rhs_x,rhs_z,A,unw_A,W,unw_R] = linearSLAM_newWeighting(x_vec0,Yn',control_mat,n,G,F,x0,Se_sq_est,Sp_sq_est);
+                    [del_x_sol,rhs_x,rhs_z,A,unw_A,big_W,unw_R] = linearSLAM_newWeighting(x_vec0,Yn',control_mat,n,G,F,x0,Se_sq_est,Sp_sq_est);
            
                 else
                     % A and Aunpermuted: A and unpermuted A matrices
@@ -174,10 +176,10 @@ for j=1:n_MC
                 idx{1}=ind_x1;
                 idx{2}=ind_x2;
                 idx{3}=mx+1:m;
-                cov_est = getUnbVarEstSLAM_new(unw_A,W,unw_R,idx);
-                sig_p1Hat_new = cov_est{1};
-                sig_p2Hat_new = cov_est{2};
-                sig_eHat_new = cov_est{3};
+                cov_est = getUnbVarEstSLAM_new(unw_A,big_W,unw_R,idx);
+                sig_p1Hat_new = cov_est(1);
+                sig_p2Hat_new = cov_est(2);
+                sig_eHat_new = cov_est(3);
                 
             else
                 % unbiased estimate of standardized measurement, process and combined variances
@@ -217,8 +219,8 @@ for j=1:n_MC
             disp(['iteration ',num2str(c1)]);
             disp('process 1, process 2 and measure variances')
             disp([sig_p1Hat,sig_p2Hat, sig_eHat])
-            disp('process 1, process 2 and measure standardized variances')
-            disp([sig_p1Hat_std, sig_p2Hat_std,sig_eHat_std])   
+%             disp('process 1, process 2 and measure standardized variances')
+%             disp([sig_p1Hat_std, sig_p2Hat_std,sig_eHat_std])   
             disp(['linearization state sum of squared errors in ', num2str(m_iter),' iterations'])
             disp(lin_err) 
         end
@@ -239,7 +241,11 @@ for j=1:n_MC
     % time trace of state covariances
     
     %Compute Mahalanobis distance for e_irls
-    Cx=inv(Aunpermute'*Aunpermute); % estimated covar
+    if ~flag_new
+        Cx=inv(Aunpermute'*Aunpermute); % estimated covar
+    else
+        Cx = inv(A.' * A);
+    end
     C_pos = Cx(1:2:end,1:2:end);
     distMah_irls2(j) = e_irls(:).'*inv(C_pos)*e_irls(:);
     for t=1:n
@@ -296,6 +302,7 @@ if n_MC==1
     saveas(gcf,'measSim.jpg')
     %vehicle trajectory and estimates
     v_est=reshape(x_sol,[4,n]);
+    
     figure;
     plot(v_est(1,:),v_est(3,:),'dg-','Linewidth',1);
     hold on;
@@ -306,7 +313,7 @@ if n_MC==1
     axis([0 30 -2 20]);
     fig1=gcf;
     % time trace of state covariances- plot conf ellipses
-    Cx=inv(Aunpermute'*Aunpermute); % estimated covar
+    %Cx=inv(Aunpermute'*Aunpermute); % estimated covar
     for i=1:n
         % extract [11 13; 31 33] portion of each 4 by 4 block diagonal term of Cx
         r1=4*(i-1)+1;
