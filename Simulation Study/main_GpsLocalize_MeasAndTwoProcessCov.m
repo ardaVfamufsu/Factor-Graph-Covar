@@ -6,7 +6,7 @@
 close all;
 clear;
 % flag =1 for unbiased, 0 for biased variance estimators
-flag_unbiased=0;
+flag_unbiased=1;
 % flag =1 for robust (M), 0 for nonrobust state estimators (biased or unbiased variance estimators)
 flag_robust=0;
 % flag =1 for errors with outliers, 0 for no outliers
@@ -14,7 +14,7 @@ flag_outliers=0;
 % flag=1 if trying to "scale" adjusted covariance to keep with order of magnitude change
 flag_scale_cov_change=1;
 % number of MC runs
-n_MC=1000;
+n_MC=1000; 
 % number of times the robot will repeat the cycles
 n_rep_cycle=1;
 % random number seed
@@ -142,7 +142,8 @@ for j=1:n_MC
         Sp_sq_est=(inv(W_est))^0.5;
         for i=1:m_iter           
             if flag_robust
-                [del_x_sol,~, ~,~, ~,Aunw,~,Aw,rhs_w,~,~,~,R,Apw]=linearSLAM_noLandmark_gps_Mestimate(x_vec0,Yn',control_mat,n,G,F,x0,Se_sq_est,Sp_sq_est); 
+                [del_x_sol,~, ~,~, ~,Aunw,~,Aw,rhs_w,~,~,~,R,Apw]=...
+                    linearSLAM_noLandmark_gps_Mestimate(x_vec0,Yn',control_mat,n,G,F,x0,Se_sq_est,Sp_sq_est); 
                 A=Apw; % weighted and permuted A matrix
                 Aunpermute=Aw; % weighted A matrix
                 rhs_x=rhs_w(1:mx);
@@ -206,7 +207,7 @@ for j=1:n_MC
     var_vect(:,j)=[sig_eHat;sig_p1Hat;sig_p2Hat];
     % error vector from true trajectory
     v_est_irls=reshape(x_sol,[4,n]);
-    e_irls=[v_est_irls(1,:)-x1_true; v_est_irls(3,:)-x2_true]; 
+    e_irls=Se_sq_est*[v_est_irls(1,:)-x1_true; v_est_irls(3,:)-x2_true]; 
     % euclidian distance from true trajectory
     distSq_irls(j)=dot(e_irls(:),e_irls(:));    
     % time trace of state covariances
@@ -318,14 +319,11 @@ if n_MC>1
     saveas(gcf,'varHistQ2.jpg')
     % histograms of position estimate error (Mahalanobis)
     figure;
-    histogram(distMah_irls,[0:20:360],'FaceColor','w','EdgeColor','k');hold on;
-    xlabel('Mahalanobis Distance of State Est Error');ylabel('Frequency');
-    %title('Unbiased Estimate of Variances')
-    %plot(prctile(distMah_irls,2.5)*ones(1,2),[0 300],'g--');
-    %plot(prctile(distMah_irls,50)*ones(1,2),[0 300],'g--');
-    %plot(prctile(distMah_irls,97.5)*ones(1,2),[0 300],'g--');
-    plot([2*n 2*n],[0 300],'--r','LineWidth',2)
-    axis([0 400 0 300]);
+    histogram(distMah_irls,[0:20:360],'FaceColor','w','EdgeColor','k','Normalization','pdf');hold on;
+    xlabel('Mahalanobis Distance of State Est Error');ylabel('Probability Density');
+    plot(chi2pdf([0:1:300],2*n));
+    plot([2*n 2*n],[0 .1],'--r','LineWidth',2)
+    axis([0 400 0 .1]);
     set(gca,'FontSize',16);
     set(gca,'LooseInset',get(gca,'TightInset'));
     saveas(gcf,'MahHist.jpg');
