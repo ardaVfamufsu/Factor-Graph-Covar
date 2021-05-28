@@ -7,6 +7,7 @@ close all;
 clear;
 % flag =1 for unbiased, 0 for biased variance estimators
 flag_unbiased=1;
+flag_new=1;  %Should hopefull be correct this time...
 % flag =1 for robust (M), 0 for nonrobust state estimators (biased or unbiased variance estimators)
 flag_robust=0;
 % flag =1 for errors with outliers, 0 for no outliers
@@ -18,7 +19,7 @@ n_MC=100;
 % number of times the robot will repeat the cycles
 n_rep_cycle=1;
 % random number seed
-rng(0);
+% rng(0);
 % ==== end of user inputs
 % sampling period
 T=1;
@@ -90,7 +91,8 @@ sig_eHat0=1; sig_pHat0=1;
 % number of linearizations
 m_iter=5;
 % mahalanobis distance storage vector
-distMah_irls=zeros(n_MC,1);  
+distMah_irls=zeros(n_MC,1); 
+distMah_irls2=zeros(n_MC,1); 
 for j=1:n_MC
     % process noise
     w=mvnrnd(zeros(n,4),W,n);
@@ -147,9 +149,14 @@ for j=1:n_MC
                 Aunpermute=Aw; % weighted A matrix
                 rhs_x=rhs_w(1:mx);
                 rhs_z=rhs_w(mx+1:m);
-            else               
-                % A and Aunpermuted: A and unpermuted A matrices
-                [del_x_sol,rhs_x, rhs_z,~, ~,Aunpermute,~,R,A]=linearSLAM_noLandmark_gps(x_vec0,Yn',control_mat,n,G,F,x0,Se_sq_est,Sp_sq_est);   
+            else
+                if flag_new
+                    [del_x_sol,rhs_x,rhs_z,A,unw_A,W,unw_R] = linearSLAM_newWeighting(x_vec0,Yn',control_mat,n,G,F,x0,Se_sq_est,Sp_sq_est);
+           
+                else
+                    % A and Aunpermuted: A and unpermuted A matrices
+                    [del_x_sol,rhs_x, rhs_z,~, ~,Aunpermute,~,R,A]=linearSLAM_noLandmark_gps(x_vec0,Yn',control_mat,n,G,F,x0,Se_sq_est,Sp_sq_est);   
+                end
             end
             x_vec0=x_vec0+del_x_sol;  
             % linearization error
@@ -163,9 +170,20 @@ for j=1:n_MC
         Ax2=A(ind_x2,:);
         Az=A(mx+1:m,:); 
         if flag_unbiased
-            % unbiased estimate of standardized measurement, process and combined variances
-            [sig_p1Hat_std,sig_p2Hat_std, sig_eHat_std]=...
-                getUnbVarEstSLAM_fastQR_3Components(R,rhs_x1,rhs_x2,rhs_z,Ax1,Ax2,Az,flag_scale_cov_change); % using Fast QR  
+            if flag_new
+                idx{1}=idx_x1;
+                idx{2}=idx_x2;
+                idx{3}=mx+1:m;
+                cov_est = getUnbVarEstSLAM_new(unw_A,W,unw_R,idx);
+                sig_p1Hat_new = cov_est{1};
+                sig_p2Hat_new = cov_est{2};
+                sig_eHat_new = cov_est{3};
+                
+            else
+                % unbiased estimate of standardized measurement, process and combined variances
+                [sig_p1Hat_std,sig_p2Hat_std, sig_eHat_std]=...
+                    getUnbVarEstSLAM_fastQR_3Components(R,rhs_x1,rhs_x2,rhs_z,Ax1,Ax2,Az,flag_scale_cov_change); % using Fast QR
+            end
         else
             % biased (nonrobust) estimate of standardized measurement, process and combined variances
             sig_p1Hat_std=1/(mx1-1)*dot(rhs_x1,rhs_x1);  
@@ -176,10 +194,16 @@ for j=1:n_MC
         sig_p1Hat_prev=sig_p1Hat;
         sig_p2Hat_prev=sig_p2Hat;
         sig_eHat_prev=sig_eHat;  
-        % find new (unstandardized) variances -using unbiased estimates 
-        sig_p1Hat=(sig_p1Hat_std)*sig_p1Hat_prev;     
-        sig_p2Hat=(sig_p2Hat_std)*sig_p2Hat_prev;  
-        sig_eHat=(sig_eHat_std)*sig_eHat_prev;
+        if flag_new
+           sig_p1Hat =sig_p1Hat_new;
+           sig_p2Hat =sig_p2Hat_new;
+           sig_eHat =sig_eHat_new;
+        else
+            % find new (unstandardized) variances -using unbiased estimates 
+            sig_p1Hat=(sig_p1Hat_std)*sig_p1Hat_prev;     
+            sig_p2Hat=(sig_p2Hat_std)*sig_p2Hat_prev;  
+            sig_eHat=(sig_eHat_std)*sig_eHat_prev;
+        end
         % error vector for variance estimate iterations
         err_vec=[sig_eHat-sig_eHat_prev; sig_p1Hat-sig_p1Hat_prev; sig_p2Hat-sig_p2Hat_prev];
         err_sigSol=dot(err_vec,err_vec);            
@@ -202,6 +226,9 @@ for j=1:n_MC
     % cputime for state and covariance estimation
     cptime(j)=cputime-cptime0;
     %j
+    
+    %% At this point, modify to make the variance estimates be conservative
+%     dof = 3
     % store estimates
     var_vect(:,j)=[sig_eHat;sig_p1Hat;sig_p2Hat];
     % error vector from true trajectory
@@ -210,7 +237,11 @@ for j=1:n_MC
     % euclidian distance from true trajectory
     distSq_irls(j)=dot(e_irls(:),e_irls(:));    
     % time trace of state covariances
+    
+    %Compute Mahalanobis distance for e_irls
     Cx=inv(Aunpermute'*Aunpermute); % estimated covar
+    C_pos = Cx(1:2:end,1:2:end);
+    distMah_irls2(j) = e_irls(:).'*inv(C_pos)*e_irls(:);
     for t=1:n
          % extract [11 13; 31 33] portion of each 4 by 4 block diagonal term of Cx
          r1=n_state*(t-1)+1;
@@ -218,6 +249,9 @@ for j=1:n_MC
          % mahalanobis distance from true trajectory
          distMah_irls(j)=distMah_irls(j)+transpose(e_irls(:,t))*inv(Cy_vec(:,:,t))*e_irls(:,t);
     end 
+    if distMah_irls(j) > 500
+        plot(e_irls)
+    end
 end
 
 vest_mean=mean(var_vect');
@@ -294,6 +328,12 @@ end
 
 %% output monte carlo results (when n_MC>1)
 if n_MC>1
+    e_above = nnz(var_vect(1,:)>sig_e)
+    e_below = length(var_vect)-e_above;
+    p1_above = nnz(var_vect(2,:)>sig_p1)
+    p2_above = nnz(var_vect(3,:)>sig_p2)
+    
+    
     % histograms of error variance estimates and true values
     figure;
     histogram(var_vect(1,:),[-1.25:0.2:4],'FaceColor','w','EdgeColor','k'),hold on;
@@ -330,4 +370,20 @@ if n_MC>1
     set(gca,'LooseInset',get(gca,'TightInset'));
     saveas(gcf,'MahHist.jpg');
     disp(['Mah Dist 2.5, 50, 97.5 Percentiles: ',num2str(round(prctile(distMah_irls,[2.5 50 97.5]),3))])
+
+    % Mah try 2
+    figure;
+    histogram(distMah_irls2,[0:20:360],'FaceColor','w','EdgeColor','k');hold on;
+    xlabel('Mahalanobis Distance of State Est Error2');ylabel('Frequency');
+    %title('Unbiased Estimate of Variances')
+    %plot(prctile(distMah_irls,2.5)*ones(1,2),[0 300],'g--');
+    %plot(prctile(distMah_irls,50)*ones(1,2),[0 300],'g--');
+    %plot(prctile(distMah_irls,97.5)*ones(1,2),[0 300],'g--');
+    plot([2*n 2*n],[0 300],'--r','LineWidth',2)
+    axis([0 400 0 300]);
+    set(gca,'FontSize',16);
+    set(gca,'LooseInset',get(gca,'TightInset'));
+    saveas(gcf,'MahHist.jpg');
+    disp(['Mah Dist 2.5, 50, 97.5 Percentiles: ',num2str(round(prctile(distMah_irls2,[2.5 50 97.5]),3))])
+
 end
