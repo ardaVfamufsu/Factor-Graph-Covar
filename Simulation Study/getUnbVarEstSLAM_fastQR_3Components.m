@@ -15,12 +15,14 @@ p=size(A1,2);
 % find traces of H1, H2, H3, H1^2, etc. without matrix inversion
 M1=A1/R;
 clear A1
-tH1=sum(diag(M1*M1'));
-tH11=sum(sumsqr(M1*M1'));
+M1_sq = M1*M1';
+tH1=sum(diag(M1_sq));
+tH11=sum(sum(M1_sq.*M1_sq));
 M2=A2/R;
 clear A2
-tH2=sum(diag(M2*M2'));
-tH22=sum(sumsqr(M2*M2'));
+M2_sq = M2 * M2';
+tH2=sum(diag(M2_sq));
+tH22=sum(sum(M2_sq.*M2_sq));
 tH1221=sum(diag((M1'*M1)*(M2'*M2)));
 clear M2 M1
 %M3=A3/R;
