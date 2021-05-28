@@ -7,7 +7,7 @@ close all;
 clear;
 % flag =1 for unbiased, 0 for biased variance estimators
 flag_unbiased=1;
-flag_new=1;  %Should hopefully be correct this time...
+flag_new=0;  %Should hopefully be correct this time...
 % flag =1 for robust (M), 0 for nonrobust state estimators (biased or unbiased variance estimators)
 flag_robust=0;
 % flag =1 for errors with outliers, 0 for no outliers
@@ -261,12 +261,15 @@ for j=1:n_MC
 end
 
 vest_mean=mean(var_vect');
+vest_var = std(var_vect');
 var_true=[sig_e;sig_p1;sig_p2];
 bias_estimates=dot(vest_mean'-var_true,vest_mean'-var_true);
 disp('mean of the variance estimates');
 disp(vest_mean);
 disp('true variances ');
 disp(var_true');
+disp('variance of the variances!');
+disp(vest_var);
 disp('bias of the estimates ')
 disp(bias_estimates)
 disp('average cputime (sec)')
