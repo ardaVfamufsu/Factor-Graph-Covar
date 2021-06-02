@@ -3,22 +3,22 @@
 % Q=[sig_p1 0 0 0; 0 sig_p1 0 0; 0 0 sig_p2 0; 0 0 0 sig_p2];
 % Measurement variance sig_e is the same for both x and y coordinates.
 % ==== user inputs - comment some if running in batch mode
-close all;
-clear;
-% flag =1 for unbiased, 0 for biased variance estimators
-flag_unbiased=1;
-% flag =1 for robust (M), 0 for nonrobust state estimators (biased or unbiased variance estimators)
-flag_robust=0;
-% flag =1 for errors with outliers, 0 for no outliers
-flag_outliers=0;
-% flag=1 if trying to "scale" adjusted covariance to keep with order of magnitude change
-flag_scale_cov_change=1;
-% number of MC runs
-n_MC=1000; 
-% number of times the robot will repeat the cycles
-n_rep_cycle=1;
-% random number seed
-rng(0);
+% close all;
+% clear;
+% % flag =1 for unbiased, 0 for biased variance estimators
+% flag_unbiased=1;
+% % flag =1 for robust (M), 0 for nonrobust state estimators (biased or unbiased variance estimators)
+% flag_robust=0;
+% % flag =1 for errors with outliers, 0 for no outliers
+% flag_outliers=0;
+% % flag=1 if trying to "scale" adjusted covariance to keep with order of magnitude change
+% flag_scale_cov_change=1;
+% % number of MC runs
+% n_MC=1000; 
+% % number of times the robot will repeat the cycles
+% n_rep_cycle=1;
+% % random number seed
+% rng(0);
 % ==== end of user inputs
 % sampling period
 T=1;
@@ -58,7 +58,7 @@ sig_e=1.5;
 sig_p1=0.5;     % x coordinate and x velocity
 sig_p2=0.2;     % y coordinate and y velocity. 
 % measurement error mixture parameters (for outliers)
-w1=0.90; w2=1-w1;
+w1=0.75; w2=1-w1;
 mu_e1=0;mu_e2=0;
 sig_e1=sig_e; sig_e2=10;
 % IRLS parameters
@@ -142,15 +142,18 @@ for j=1:n_MC
         Sp_sq_est=(inv(W_est))^0.5;
         for i=1:m_iter           
             if flag_robust
-                [del_x_sol,~, ~,~, ~,Aunw,~,Aw,rhs_w,~,~,~,R,Apw]=...
+                [del_x_sol,~, ~,~, ~,Aunw,~,Aw,rhs_w,Wt,~,~,R,Apw]=...
                     linearSLAM_noLandmark_gps_Mestimate(x_vec0,Yn',control_mat,n,G,F,x0,Se_sq_est,Sp_sq_est); 
                 A=Apw; % weighted and permuted A matrix
                 Aunpermute=Aw; % weighted A matrix
                 rhs_x=rhs_w(1:mx);
                 rhs_z=rhs_w(mx+1:m);
+                Wtz=diag(Wt(mx+1:m,mx+1:m));
+                Wtz2=reshape(Wtz,n_meas,n);
             else               
                 % A and Aunpermuted: A and unpermuted A matrices
-                [del_x_sol,rhs_x, rhs_z,~, ~,Aunpermute,~,R,A]=linearSLAM_noLandmark_gps(x_vec0,Yn',control_mat,n,G,F,x0,Se_sq_est,Sp_sq_est);   
+                [del_x_sol,rhs_x, rhs_z,~, ~,Aunpermute,~,R,A]=linearSLAM_noLandmark_gps(x_vec0,Yn',control_mat,n,G,F,x0,Se_sq_est,Sp_sq_est);
+                Wtz2=ones(n_meas,n);
             end
             x_vec0=x_vec0+del_x_sol;  
             % linearization error
@@ -207,9 +210,8 @@ for j=1:n_MC
     var_vect(:,j)=[sig_eHat;sig_p1Hat;sig_p2Hat];
     % error vector from true trajectory
     v_est_irls=reshape(x_sol,[4,n]);
-    e_irls=Se_sq_est*[v_est_irls(1,:)-x1_true; v_est_irls(3,:)-x2_true]; 
-    % euclidian distance from true trajectory
-    distSq_irls(j)=dot(e_irls(:),e_irls(:));    
+    %e_irls=Se_sq_est*[v_est_irls(1,:)-Yn(:,1)'; v_est_irls(3,:)-Yn(:,2)'];     
+    e_irls=[v_est_irls(1,:)-x1_true; v_est_irls(3,:)-x2_true];    
     % time trace of state covariances
     Cx=inv(Aunpermute'*Aunpermute); % estimated covar
     for t=1:n
@@ -217,7 +219,9 @@ for j=1:n_MC
          r1=n_state*(t-1)+1;
          Cy_vec(:,:,t)=[Cx(r1,r1) Cx(r1,r1+2);Cx(r1,r1+2) Cx(r1+2,r1+2)];
          % mahalanobis distance from true trajectory
-         distMah_irls(j)=distMah_irls(j)+transpose(e_irls(:,t))*inv(Cy_vec(:,:,t))*e_irls(:,t);
+         wt_e=sqrt(Wtz2(:,t)); % weight vector for residual - needed for M estimator, unity if M estimator is not used
+         e_irls_wt=diag(wt_e)*e_irls(:,t);
+         distMah_irls(j)=distMah_irls(j)+e_irls_wt'*inv(Cy_vec(:,:,t))*e_irls_wt;
     end 
 end
 

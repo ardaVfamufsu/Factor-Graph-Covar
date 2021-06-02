@@ -1,19 +1,19 @@
 % forward velocity and bearing model- nonlinear process equation
 % ==== user inputs - comment some if running in batch mode
-clear;
-close all;
-% number of times the robot will repeat the cycles
-n_rep_cycle=1;
-% robust estimation (robust implementation not yet ready)
-flag_robust=0;
-% unbiased estimation
-flag_unbiased=0;
-% flag=1 if trying to "scale" adjusted covariance to keep with order of magnitude change
-flag_scale_cov_change=1;
-% number of MC runs
-n_MC=1000;
-% random number seed
-rng(2);
+% clear;
+% close all;
+% % number of times the robot will repeat the cycles
+% n_rep_cycle=1;
+% % robust estimation (robust implementation not yet ready)
+% flag_robust=0;
+% % unbiased estimation
+% flag_unbiased=0;
+% % flag=1 if trying to "scale" adjusted covariance to keep with order of magnitude change
+% flag_scale_cov_change=1;
+% % number of MC runs
+% n_MC=1000;
+% % random number seed
+% rng(2);
 % ==== end of user inputs
 % sampling period
 T=1;
