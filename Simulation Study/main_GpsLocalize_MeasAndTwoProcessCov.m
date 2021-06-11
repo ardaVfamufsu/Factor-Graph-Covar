@@ -7,7 +7,10 @@ close all;
 clear;
 % flag =1 for unbiased, 0 for biased variance estimators
 flag_unbiased=1;
-flag_new=0;  %Should hopefully be correct this time...
+% This flag says whether to run the new or old "weighting"
+% Old just basically acted like it wasn't there.  New one should
+% be mathematically correct, though not seeing much difference so far!
+flag_new=1;  %Should hopefully be correct this time...
 % flag =1 for robust (M), 0 for nonrobust state estimators (biased or unbiased variance estimators)
 flag_robust=0;
 % flag =1 for errors with outliers, 0 for no outliers
@@ -17,7 +20,7 @@ flag_scale_cov_change=1;
 % number of MC runs
 n_MC=500;
 % number of times the robot will repeat the cycles
-n_rep_cycle=4;
+n_rep_cycle=1;
 % random number seed
 % rng(0);
 % ==== end of user inputs
@@ -58,6 +61,10 @@ mx2=length(ind_x2);
 sig_e=1.5;
 sig_p1=0.5;     % x coordinate and x velocity
 sig_p2=0.2;     % y coordinate and y velocity. 
+% sig_e=1;
+% sig_p1=1;     % x coordinate and x velocity
+% sig_p2=1;     % y coordinate and y velocity. 
+
 % measurement error mixture parameters (for outliers)
 w1=0.90; w2=1-w1;
 mu_e1=0;mu_e2=0;
@@ -268,7 +275,7 @@ disp('mean of the variance estimates');
 disp(vest_mean);
 disp('true variances ');
 disp(var_true');
-disp('variance of the variances!');
+disp('stdev of the variances!');
 disp(vest_var);
 disp('bias of the estimates ')
 disp(bias_estimates)
